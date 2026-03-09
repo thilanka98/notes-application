@@ -6,8 +6,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (including dev deps so build tools like vite are available)
+# we install everything here, then the final image only contains the built artifacts
+RUN npm ci
 
 # Copy source code
 COPY . .

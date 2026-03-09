@@ -23,8 +23,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY . .
 
+# Create static directory
+RUN mkdir -p /app/staticfiles
+
 # Create non-root user
-RUN adduser --disabled-password --gecos '' django && chown -R django:django /app
+RUN adduser --disabled-password --gecos '' django \
+    && chown -R django:django /app
+
+# Switch user
 USER django
 
 # Expose port

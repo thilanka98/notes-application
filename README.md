@@ -63,41 +63,62 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhos
 # uploaded files will be saved using the default Django storage (local filesystem).
 ```
 
-## Running with Docker
+## Running with Docker (development)
 
-1. **Clone the repository and navigate to the project directory**
+1. **Clone the repository and cd into it**
 
-2. **Create the `.env` file** with your configuration
+2. Make sure you have a `.env` in the project root as described above.
 
-3. **Build and run the containers:**
+3. Build and start the services:
    ```bash
    docker-compose up --build
    ```
+   or detach:
+   ```bash
+   docker-compose up --build -d
+   ```
 
-4. **Access the application:**
-   - Frontend: http://localhost
+4. Verify everything is healthy:
+   ```bash
+   docker-compose ps
+   docker-compose logs -f backend
+   ```
+
+5. **Access the application**
+   - Frontend/proxy: http://localhost/
    - API: http://localhost/api/
-   - Admin: http://localhost/admin/
+   - Django admin: http://localhost/admin/
+
+> In dev mode the backend volume is mounted so you can edit Python files and see changes instantly. Static assets are served from a local volume.
 
 ## Development Setup (without Docker)
 
+You can work on backend and frontend independently.
+
 ### Backend
+
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+# create a `.env` file in the project root or export the vars directly
 python manage.py migrate
-python manage.py runserver
+python manage.py runserver        # starts at http://127.0.0.1:8000
 ```
 
 ### Frontend
+
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev                       # starts Vite dev server on :3000
 ```
-The front end expects the API to be available under `/api`. When running locally you can either let Django serve the vanilla HTML or configure a proxy to `http://localhost:8000`.
+
+The React app expects the API at `/api`. In development you can either:
+
+1. Configure Vite’s proxy to forward `/api` to `http://localhost:8000` (see `vite.config.js`), or
+2. Run the frontend from the Django templates directory by visiting `http://localhost:8000`.
 ## API Endpoints
 
 - `GET /api/notes/` - List all notes
@@ -155,26 +176,41 @@ class Note(models.Model):
 | PUT    | /api/notes/{id}/ | Update        |
 | DELETE | /api/notes/{id}/ | Delete        |
 
-## Run Locally (without Docker)
-```bash
-cd backend
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
-```
-Visit: http://localhost:8000
+## Production Deployment
 
-## Run with Docker
-```bash
-docker-compose up --build
-```
-Visit: http://localhost:8000
+In production you should build and publish the images, then run using the `docker-compose.prod.yml` file or equivalent orchestration (ECS, Kubernetes, etc.).
 
-## Run with Docker (standalone)
-```bash
-docker build -t notes-app .
-docker run -p 8000:8000 notes-app
-```
+1. **Build & push images to your registry:**
+   ```bash
+   docker build -t yourhubuser/notes-backend:latest backend/
+   docker build -t yourhubuser/notes-frontend:latest frontend/
+   docker login       # login to Docker Hub or your registry
+   docker push yourhubuser/notes-backend:latest
+   docker push yourhubuser/notes-frontend:latest
+   ```
+
+2. **Prepare production configuration** (set all environment variables securely, ensure `DEBUG=False`, tighten `CORS_ALLOWED_ORIGINS`, rotate `DJANGO_SECRET_KEY`, etc.).
+
+3. **Start the stack** using the production compose file:
+   ```bash
+   docker-compose -f docker-compose.prod.yml up -d
+   ```
+
+   The `prod` file references the published images and does not mount source code volumes.
+
+4. **Verify everything**
+   ```bash
+   docker-compose -f docker-compose.prod.yml ps
+   docker-compose -f docker-compose.prod.yml logs -f backend
+   ```
+
+5. **Networking & security**
+   - Only expose ports 80/443 to the public internet.
+   - Restrict the database port to the backend’s security group.
+   - Use HTTPS via your proxy (nginx or cloud load balancer).
+
+> This repository separates development and production configuration; no secrets are checked into source control, and environment variables drive all sensitive settings.
+
 # notes-application
 # notes-application
 # notes-application
